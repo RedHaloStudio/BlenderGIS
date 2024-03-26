@@ -24,7 +24,6 @@ def mouseTo3d(context, x, y):
 	loc = region_2d_to_location_3d(reg, reg3d, coords, vec) #WARNING, this function return indeterminate value when view3d clip distance is too large
 	return loc
 
-
 class DropToGround():
 	'''A class to perform raycasting accross z axis'''
 
@@ -78,7 +77,6 @@ def placeObj(mesh, objName):
 	#bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
 	return obj
 
-
 def adjust3Dview(context, bbox, zoomToSelect=True):
 	'''adjust all 3d views clip distance to match the submited bbox'''
 	dst = round(max(bbox.dimensions))
@@ -104,11 +102,11 @@ def adjust3Dview(context, bbox, zoomToSelect=True):
 				overrideContext = context.copy()
 				overrideContext['area'] = area
 				overrideContext['region'] = area.regions[-1]
-				if bpy.app.version[0] > 3:
-					with context.temp_override(overrideContext):
-						bpy.ops.view3d.view_selected()
-				else:
+				if bpy.app.version < (4,0,0):
 					bpy.ops.view3d.view_selected(overrideContext)
+				else:
+					with context.temp_override(**overrideContext):
+						bpy.ops.view3d.view_selected(use_all_regions=False)
 
 
 def showTextures(context):
@@ -119,7 +117,6 @@ def showTextures(context):
 			space = area.spaces.active
 			if space.shading.type == 'SOLID':
 				space.shading.color_type = 'TEXTURE'
-
 
 def addTexture(mat, img, uvLay, name='texture'):
 	'''Set a new image texture to a given material and following a given uv map'''
@@ -147,7 +144,6 @@ def addTexture(mat, img, uvLay, name='texture'):
 	node_tree.links.new(uvMapNode.outputs['UV'] , textureNode.inputs['Vector'])
 	node_tree.links.new(textureNode.outputs['Color'] , diffuseNode.inputs['Base Color'])#diffuseNode.inputs['Color'])
 	node_tree.links.new(diffuseNode.outputs['BSDF'] , outputNode.inputs['Surface'])
-
 
 class getBBOX():
 

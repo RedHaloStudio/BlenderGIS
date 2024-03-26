@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import math
+import bpy
 
 ####################################
 
@@ -26,10 +27,11 @@ import math
 
 cutoff_lat = math.atan(math.sinh(math.pi)) * 180/math.pi #= 85.05112°
 
+# TDT_Key = AuthKeyTianditu
+# prefs = bpy.context.preferences.addons[__name__.partition('.')[0]].preferences
+# TDT_Key = prefs.AuthKeyTianditu
 
 GRIDS = {
-
-
 	"WM" : {
 		"name" : 'Web Mercator',
 		"description" : 'Global grid in web mercator projection',
@@ -42,7 +44,6 @@ GRIDS = {
 		"originLoc": "NW", #North West or South West
 		"resFactor" : 2
 	},
-
 
 	"WGS84" : {
 		"name" : 'WGS84',
@@ -68,7 +69,6 @@ GRIDS = {
 		"originLoc": "SW", #North West or South West
 		"resFactor" : 2
 	},
-
 
 	#####################
 	#Custom grid example
@@ -98,7 +98,6 @@ GRIDS = {
 		"resolutions" : [4000, 2000, 1000, 500, 250, 100, 50, 25, 10, 5, 2, 1, 0.5, 0.25, 0.1] #15 levels
 	},
 
-
 	# >> France Lambert 93 used by CRAIG WMTS
 	# WMTS resolution = ScaleDenominator * 0.00028
 	# (0.28 mm = physical distance of a pixel (WMTS assumes a DPI 90.7)
@@ -111,6 +110,18 @@ GRIDS = {
 		"tileSize": 256,
 		"originLoc": "NW",
 		"initRes": 1354.666,
+		"resFactor" : 2
+	},
+
+	# >> GCJ02
+	"GCJ02" : {
+		"name" : 'GCJ02',
+		"description" : 'Tencent Amap projection',
+		"CRS": 'EPSG:2154',
+		"bbox": [99200, 6049600, 1242500, 7110500], #w,s,e,n
+		"bboxCRS": 'EPSG:2154',
+		"tileSize": 256,
+		"originLoc": "NW", #North West or South West
 		"resFactor" : 2
 	},
 
@@ -132,8 +143,6 @@ GRIDS = {
 #so to support multiple grid it's necessary to duplicate source definition
 
 SOURCES = {
-
-
 	###############
 	# TMS examples
 	###############
@@ -153,7 +162,6 @@ SOURCES = {
 		"referer": "https://www.google.com/maps"
 	},
 
-
 	"OSM" : {
 		"name" : 'OSM',
 		"description" : 'Open Street Map',
@@ -166,7 +174,6 @@ SOURCES = {
 		"urlTemplate": "https://tile.openstreetmap.org/{Z}/{X}/{Y}.png",
 		"referer": "" #https://www.openstreetmap.org will return 418 error
 	},
-
 
 	"BING" : {
 		"name" : 'Bing',
@@ -181,7 +188,6 @@ SOURCES = {
 		"urlTemplate": "http://ak.dynamic.t0.tiles.virtualearth.net/comp/ch/{QUADKEY}?it={LAY}",
 		"referer": "http://www.bing.com/maps"
 	},
-
 
 	"ESRI" : {
 		"name" : 'Esri',
@@ -206,6 +212,20 @@ SOURCES = {
 		"referer": "https://server.arcgisonline.com/arcgis/rest/services"
 	},
 
+	"BAIDU" : {
+		"name" : 'BAIDU',
+		"description" : 'BAIDU Map',
+		"service": 'TMS',
+		"grid": 'WM',
+		"quadTree": False,
+		"layers" : {
+			"SAT" : {"urlKey" : '', "name" : 'Satellite', "description" : '', "zmin" : 0, "zmax" : 18},
+		},
+		# http://api0.map.bdimg.com/customimage/tile?&x=101237&y=37702&z=19&udt=20130506
+		
+		"urlTemplate": "http://api0.map.bdimg.com/customimage/tile?&x={X}&y={Y}&z={Z}&udt=20130506",
+		"referer": "http://www.bing.com/maps"
+	},
 
 	###############
 	# WMS examples
@@ -213,7 +233,6 @@ SOURCES = {
 
 	#with WMS you can set source grid as you want, the only condition is that the grid
 	#crs must match one on crs provided by WMS
-
 
 	"OSM_WMS" : {
 		"name" : 'OSM WMS',
@@ -240,6 +259,61 @@ SOURCES = {
 		"referer": "http://www.osm-wms.de/"
 	},
 
+	"Tianditu" : {
+		"name" : '天地图',
+		"description" : '天地图',
+		"service": 'WMTS',
+		"grid": 'WM',
+		"matrix" : 'w',
+		"layers" : {
+			"SAT" : {"urlKey" : 'img', "name" : 'sat', "description" : '', "format" : 'titles', "style" : 'default', "zmin" : 0, "zmax" : 18}
+		},
+		"urlTemplate": {
+			"BASE_URL" : 'https://t2.tianditu.gov.cn/img_w/wmts?',
+			"SERVICE" : 'WMTS',
+			"VERSION" : '1.0.0',
+			"REQUEST" : 'GetTile',
+			"LAYER" : '{LAY}',
+			"STYLE" : '{STYLE}',
+			"FORMAT" : 'image/{FORMAT}',
+			"TILEMATRIXSET" : '{MATRIX}',
+			"TILEMATRIX" : '{Z}',
+			"TILEROW" : '{Y}',
+			"TILECOL" : '{X}',
+			"tk":'{KEY}'
+			},
+		"referer": "http://www.geoportail.gouv.fr/accueil"
+	},
+
+	"AMAP" : {
+		"name" : '高德',
+		"description" : '高德地图',
+		"service": 'WMTS',
+		"grid": 'WM',
+		"matrix" : 'w',
+		"layers" : {
+			"SAT" : {"urlKey" : 'img', "name" : '卫星图', "description" : '', "format" : 'titles', "style" : '6', "zmin" : 0, "zmax" : 18},
+			"MAP" : {"urlKey" : 'img', "name" : '地图', "description" : '', "format" : 'titles', "style" : '7', "zmin" : 0, "zmax" : 18},
+			"Road No Map" : {"urlKey" : 'img', "name" : '无底图道路', "description" : '', "format" : 'titles', "style" : '8', "zmin" : 0, "zmax" : 18},
+			# "Road" : {"urlKey" : 'img', "name" : '纯道路', "description" : '', "format" : 'titles', "style" : '8', "ltype" : "11", "zmin" : 0, "zmax" : 18}, # ltype=11
+			# "Sign" : {"urlKey" : 'img', "name" : '纯地标', "description" : '', "format" : 'titles', "style" : '8', "ltype" : "4", "zmin" : 0, "zmax" : 18}, # ltype=4
+			# "Road With Sign" : {"urlKey" : 'img', "name" : '道路地标', "description" : '', "format" : 'titles', "style" : '8', "ltype" : "8", "zmin" : 0, "zmax" : 18} # ltype=8
+		},
+		"urlTemplate": {
+			"BASE_URL" : 'https://webst01.is.autonavi.com/appmaptile?',
+			"x" : '{X}',
+			"y" : '{Y}',
+			"z" : '{Z}',
+			"STYLE" : '{STYLE}',
+			"LTYPE" : '{LTYPE}'
+			},
+		"referer": "http://www.geoportail.gouv.fr/accueil"
+	},
+
+	# http://map.gtimg.com/tile?z={z}&x={x}&y={y}&styleid=2&version=455
+
+	# 百度
+	# http://api0.map.bdimg.com/customimage/tile?&x=101237&y=37702&z=19&udt=20130506
 
 }
 """

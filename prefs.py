@@ -242,6 +242,20 @@ class BGIS_PREFS(AddonPreferences):
 		description="you need to register and request a key from opentopography website"
 	)
 
+	tianditu_api_key: StringProperty(
+		name = "",
+		description="you need to register and request a key from tianditu website"
+	)
+
+	proxy_host: StringProperty(
+		default="",
+	)
+
+	use_proxy: BoolProperty(
+		default=False,
+		name = "Use proxy for network requests",
+		description = "Use proxy for network requests"
+	)
 
 	################
 	#IO options
@@ -333,12 +347,22 @@ class BGIS_PREFS(AddonPreferences):
 		row = box.row()
 		row.label(text="Opentopography Api Key")
 		box.row().prop(self, "opentopography_api_key")
+
+		row = box.row()
+		row.label(text="Tianditu Api Key")
+		box.row().prop(self, "tianditu_api_key")
 		#System
 		box = layout.box()
 		box.label(text='System')
 		box.prop(self, "projEngine")
 		box.prop(self, "imgEngine")
 		box.prop(self, "logLevel")
+
+		# use proxy
+		box = layout.box()
+		box.label(text='Others')
+		box.prop(self, "use_proxy")
+		box.prop(self, "proxy_host")
 
 #######################
 

@@ -18,6 +18,7 @@
 #  ***** GPL LICENSE BLOCK *****
 
 #built-in imports
+import bpy
 import logging
 log = logging.getLogger(__name__)
 
@@ -39,9 +40,10 @@ from ..proj.ellps import dd2meters, meters2dd
 from ..proj.srs import SRS
 
 from .. import settings
-USER_AGENT = settings.user_agent
 
-TIMEOUT = 4
+PKG, SUBPKG = __package__.split('.', maxsplit=1)
+
+USER_AGENT = settings.user_agent
 
 # Set mosaic backgroung image color, it will be the base color for area not covered
 # by the map service (ie when requests return non valid data)
@@ -129,11 +131,9 @@ class TileMatrix():
 		else: #(if units cannot be determined we assume its meters)
 			self.units = 'meters'
 
-
 	@property
 	def globalbbox(self):
 		return self.xmin, self.ymin, self.xmax, self.ymax
-
 
 	def geoToProj(self, long, lat):
 		"""convert longitude latitude in decimal degrees to grid crs"""
@@ -149,7 +149,6 @@ class TileMatrix():
 		else:
 			return reprojPt(self.CRS, 4326, x, y)
 
-
 	def getResList(self):
 		if hasattr(self, 'resolutions'):
 			return self.resolutions
@@ -164,7 +163,6 @@ class TileMatrix():
 			return self.resolutions[zoom]
 		else:
 			return self.initRes / self.resFactor**zoom
-
 
 	def getNearestZoom(self, res, rule='closer'):
 		"""
@@ -250,13 +248,11 @@ class TileMatrix():
 			y += geoTileSize #top left
 		return x, y
 
-
 	def getTileBbox(self, col, row, zoom):
 		xmin, ymax = self.getTileCoords(col, row, zoom)
 		xmax = xmin + (self.tileSize * self.getRes(zoom))
 		ymin = ymax - (self.tileSize * self.getRes(zoom))
 		return xmin, ymin, xmax, ymax
-
 
 	def bboxRequest(self, bbox, zoom):
 		return BBoxRequest(self, bbox, zoom)
@@ -283,7 +279,6 @@ class BBoxRequestMZ():
 
 	def __getitem__(self, z):
 		return self.bboxrequests[z]
-
 
 class BBoxRequest():
 
@@ -327,8 +322,6 @@ class BBoxRequest():
 		return self.nbTilesX * self.nbTilesY
 
 	#megapixel, geosize
-
-
 
 class MapService():
 	"""
@@ -446,7 +439,6 @@ class MapService():
 		if self.status == 4:
 			return 'Reprojecting...'
 
-
 	def setDstGrid(self, grdkey):
 		'''Set destination tile matrix'''
 		if grdkey is not None and grdkey != self.srcGridKey:
@@ -455,7 +447,6 @@ class MapService():
 		else:
 			self.dstGridKey = None
 			self.dstTms = None
-
 
 	def getCache(self, laykey, useDstGrid):
 		'''Return existing cache for requested layer or built it if not exists'''
@@ -487,7 +478,6 @@ class MapService():
 		else:
 			return self.srcTms
 
-
 	def buildUrl(self, laykey, col, row, zoom):
 		"""
 		Receive tiles coords in source tile matrix space and build request url
@@ -495,6 +485,8 @@ class MapService():
 		url = self.urlTemplate
 		lay = self.layers[laykey]
 		tm = self.srcTms
+
+		prefs = bpy.context.preferences.addons[PKG].preferences
 
 		if self.service == 'TMS':
 			url = url.replace("{LAY}", lay.urlKey)
@@ -515,10 +507,12 @@ class MapService():
 			url = url.replace("{LAY}", lay.urlKey)
 			url = url.replace("{FORMAT}", lay.format)
 			url = url.replace("{STYLE}", lay.style)
+			# url = url.replace("{LTYLE}", lay.ltyle)
 			url = url.replace("{MATRIX}", self.matrix)
 			url = url.replace("{X}", str(col))
 			url = url.replace("{Y}", str(row))
 			url = url.replace("{Z}", str(zoom))
+			url = url.replace("{KEY}", str(prefs.tianditu_api_key))
 
 		if self.service == 'WMS':
 			url = self.urlTemplate['BASE_URL']
@@ -532,6 +526,7 @@ class MapService():
 			url = url.replace("{CRS}", str(tm.CRS))
 			url = url.replace("{WIDTH}", str(tm.tileSize))
 			url = url.replace("{HEIGHT}", str(tm.tileSize))
+			url = url.replace("{KEY}", str(prefs.tianditu_api_key))
 
 			xmin, ymax = tm.getTileCoords(col, row, zoom)
 			xmax = xmin + tm.tileSize * tm.getRes(zoom)
@@ -543,7 +538,6 @@ class MapService():
 			url = url.replace("{BBOX}", bbox)
 
 		return url
-
 
 	def getQuadKey(self, x, y, z):
 		"Converts TMS tile coordinates to Microsoft QuadTree"
@@ -558,7 +552,6 @@ class MapService():
 			quadKey += str(digit)
 		return quadKey
 
-
 	def isTileInMapsBounds(self, col, row, zoom, tm):
 		'''Test if the tile is not out of tile matrix bounds'''
 		x,y = tm.getTileCoords(col, row, zoom) #top left
@@ -569,7 +562,6 @@ class MapService():
 		else:
 			return True
 
-
 	def downloadTile(self, laykey, col, row, zoom):
 		"""
 		Download bytes data of requested tile in source tile matrix space
@@ -579,10 +571,20 @@ class MapService():
 		url = self.buildUrl(laykey, col, row, zoom)
 		log.debug(url)
 
+		prefs = bpy.context.preferences.addons[PKG].preferences
+
 		try:
+			# Proxy host
+			proxy_host = prefs.proxy_host
+			use_proxy = prefs.use_proxy
+
 			#make request
 			req = urllib.request.Request(url, None, self.headers)
-			handle = urllib.request.urlopen(req, timeout=TIMEOUT)
+			if use_proxy:
+				# proxy
+				req.set_proxy(proxy_host, "http")
+
+			handle = urllib.request.urlopen(req, timeout=3)
 			#open image stream
 			data = handle.read()
 			handle.close()
@@ -600,7 +602,6 @@ class MapService():
 			log.debug("Invalid tile data for request {}".format(url))
 
 		return data
-
 
 	def tileRequest(self, laykey, col, row, zoom, toDstGrid=True):
 		"""
@@ -621,7 +622,6 @@ class MapService():
 			data = self.buildDstTile(laykey, col, row, zoom)
 
 		return data
-
 
 	def buildDstTile(self, laykey, col, row, zoom):
 		'''build a tile that fit the destination tile matrix'''
@@ -660,9 +660,6 @@ class MapService():
 		img = NpImage(reprojImg(crs1, crs2, mosaic.toGDAL(), out_ul=(xmin,ymax), out_size=(tileSize,tileSize), out_res=res, sqPx=True, resamplAlg=self.RESAMP_ALG))
 
 		return img.toBLOB()
-
-
-
 
 	def seedTiles(self, laykey, tiles, toDstGrid=True, nbThread=10, buffSize=5000, cpt=True):
 		"""
@@ -762,7 +759,6 @@ class MapService():
 			self.status = 0
 			self.nbTiles, self.cptTiles = 0, 0
 
-
 	def getTiles(self, laykey, tiles, toDstGrid=True, nbThread=10, cpt=True):
 		"""
 		Return bytes data of requested tiles
@@ -775,16 +771,13 @@ class MapService():
 		cache = self.getCache(laykey, toDstGrid)
 		return cache.getTiles(tiles) #[(x,y,z,data)]
 
-
 	def getTile(self, laykey, col, row, zoom, toDstGrid=True):
 		return self.getTiles(laykey, [col, row, zoom], toDstGrid)[0]
-
 
 	def bboxRequest(self, bbox, zoom, dstGrid=True):
 		#Select tile matrix set
 		tm = self.getTM(dstGrid)
 		return BBoxRequest(tm, bbox, zoom)
-
 
 	def seedCache(self, laykey, bbox, zoom, toDstGrid=True, nbThread=10, buffSize=5000):
 		"""
@@ -797,7 +790,6 @@ class MapService():
 		else:
 			rq = BBoxRequest(tm, bbox, zoom)
 		self.seedTiles(laykey, rq.tiles, toDstGrid=toDstGrid, nbThread=10, buffSize=5000)
-
 
 	def getImage(self, laykey, bbox, zoom, path=None, bigTiff=False, outCRS=None, toDstGrid=True, nbThread=10, cpt=True):
 		"""

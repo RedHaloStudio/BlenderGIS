@@ -58,7 +58,6 @@ PKG, SUBPKG = __package__.split('.', maxsplit=1) #blendergis.basemaps
 ####################
 
 class BaseMap(GeoScene):
-
 	"""Handle a map as background image in Blender"""
 
 	def __init__(self, context, srckey, laykey, grdkey=None):
@@ -136,7 +135,6 @@ class BaseMap(GeoScene):
 		#Store previous request
 		#TODO
 
-
 	def get(self):
 		'''Launch run() function in a new thread'''
 		self.stop()
@@ -212,7 +210,6 @@ class BaseMap(GeoScene):
 
 		return mosaic
 
-
 	def place(self):
 		'''Set map as background image'''
 
@@ -282,9 +279,6 @@ class BaseMap(GeoScene):
 		#Update image drawing
 		self.bkg.data.reload()
 
-
-
-
 ####################################
 def drawInfosText(self, context):
 	#Get contexts
@@ -319,7 +313,6 @@ def drawInfosText(self, context):
 	txt += ' ' + self.progress
 	context.area.header_text_set(txt)
 
-
 def drawZoomBox(self, context):
 	if self.zoomBoxMode and not self.zoomBoxDrag:
 		# before selection starts draw infinite cross
@@ -350,7 +343,6 @@ def drawZoomBox(self, context):
 ###############
 
 class VIEW3D_OT_map_start(Operator):
-
 	bl_idname = "view3d.map_start"
 	bl_description = 'Toggle 2d map navigation'
 	bl_label = "Basemap"
@@ -387,7 +379,6 @@ class VIEW3D_OT_map_start(Operator):
 			layItems.append( (laykey, lay['name'], lay['description']) )
 		return layItems
 
-
 	src: EnumProperty(
 				name = "Map",
 				description = "Choose map service source",
@@ -406,7 +397,6 @@ class VIEW3D_OT_map_start(Operator):
 				items = listLayers
 				)
 
-
 	dialog: StringProperty(default='MAP') # 'MAP', 'SEARCH', 'OPTIONS'
 
 	query: StringProperty(name="Go to")
@@ -414,6 +404,8 @@ class VIEW3D_OT_map_start(Operator):
 	zoom: IntProperty(name='Zoom level', min=0, max=25)
 
 	recenter: BoolProperty(name='Center to existing objects')
+
+	# proxy: BoolProperty(name='Use proxy for network requests')
 
 	def draw(self, context):
 		addonPrefs = context.preferences.addons[PKG].preferences
@@ -462,7 +454,10 @@ class VIEW3D_OT_map_start(Operator):
 			#row = layout.row()
 			#row.label(text='Map scale:')
 			#row.prop(scn, '["'+SK.SCALE+'"]', text='')
-
+			
+			row = layout.box()
+			row.prop(addonPrefs, "use_proxy")
+			row.prop(addonPrefs, "proxy_host")
 
 	def invoke(self, context, event):
 
@@ -524,13 +519,7 @@ class VIEW3D_OT_map_start(Operator):
 
 		return {'FINISHED'}
 
-
-
-
-
 ###############
-
-
 class VIEW3D_OT_map_viewer(Operator):
 
 	bl_idname = "view3d.map_viewer"
@@ -550,11 +539,9 @@ class VIEW3D_OT_map_viewer(Operator):
 	def poll(cls, context):
 		return context.area.type == 'VIEW_3D'
 
-
 	def __del__(self):
 		if getattr(self, 'restart', False):
 			bpy.ops.view3d.map_start('INVOKE_DEFAULT', src=self.srckey, lay=self.laykey, grd=self.grdkey, dialog=self.dialog)
-
 
 	def invoke(self, context, event):
 
@@ -621,9 +608,7 @@ class VIEW3D_OT_map_viewer(Operator):
 
 		return {'RUNNING_MODAL'}
 
-
 	def modal(self, context, event):
-
 		context.area.tag_redraw()
 		scn = bpy.context.scene
 
@@ -631,7 +616,6 @@ class VIEW3D_OT_map_viewer(Operator):
 			#report thread progression
 			self.progress = self.map.srv.report
 			return {'PASS_THROUGH'}
-
 
 		if event.type in ['WHEELUPMOUSE', 'NUMPAD_PLUS']:
 
@@ -680,7 +664,6 @@ class VIEW3D_OT_map_viewer(Operator):
 										self.map.bkg.location  -= deltaVect
 									self.map.moveOrigin(dx, dy, updObjLoc=self.updObjLoc)
 						self.map.get()
-
 
 		if event.type in ['WHEELDOWNMOUSE', 'NUMPAD_MINUS']:
 
@@ -732,8 +715,6 @@ class VIEW3D_OT_map_viewer(Operator):
 									self.map.moveOrigin(dx, dy, updObjLoc=self.updObjLoc)
 						self.map.get()
 
-
-
 		if event.type == 'MOUSEMOVE':
 
 			#Report mouse location coords in projeted crs
@@ -764,7 +745,6 @@ class VIEW3D_OT_map_viewer(Operator):
 							loc1 = self.objsLoc1[i]
 							obj.location.x = loc1.x - dlt.x
 							obj.location.y = loc1.y - dlt.y
-
 
 		if event.type in {'LEFTMOUSE', 'MIDDLEMOUSE'}:
 
@@ -833,7 +813,6 @@ class VIEW3D_OT_map_viewer(Operator):
 				self.map.zoom = z
 				self.map.get()
 
-
 		if event.type in ['LEFT_CTRL', 'RIGHT_CTRL']:
 
 			if event.value == 'PRESS':
@@ -844,7 +823,6 @@ class VIEW3D_OT_map_viewer(Operator):
 				#restore view 3d distance and location
 				context.region_data.view_distance = self._viewDstZ
 				context.region_data.view_location = self._viewLoc
-
 
 		#NUMPAD MOVES (3D VIEW or MAP)
 		if event.value == 'PRESS' and event.type in ['NUMPAD_2', 'NUMPAD_4', 'NUMPAD_6', 'NUMPAD_8']:
@@ -908,7 +886,6 @@ class VIEW3D_OT_map_viewer(Operator):
 			else:
 				self.map.lockedZoom = None
 				self.map.get()
-
 
 		#ZOOM BOX
 		if event.type == 'B' and event.value == 'PRESS':
@@ -975,11 +952,7 @@ class VIEW3D_OT_map_viewer(Operator):
 				context.area.header_text_set(None)
 				return {'CANCELLED'}
 
-
-
 		return {'RUNNING_MODAL'}
-
-
 
 ####################################
 
@@ -1018,8 +991,6 @@ class VIEW3D_OT_map_search(bpy.types.Operator):
 			else:
 				geoscn.setOriginGeo(lon, lat)
 		return {'FINISHED'}
-
-
 
 classes = [
 	VIEW3D_OT_map_start,
